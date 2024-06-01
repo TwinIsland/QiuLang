@@ -4,10 +4,10 @@ A Turing-complete language implemented entirely in pure C, with no external libr
 ## Run
 **Compile lexer:**
 ```shell
-gcc common.c lexer.c parser.c compiler.c -I./ -o compiler -O3
+gcc common.c lexer.c parser.c compiler.c -Iinclude -o qui -O3 -Wall
 ```
 
 for debugging:
 ```shell
-gcc -DDEBUG common.c lexer.c parser.c compiler.c -I./ -o compiler -g
+gcc -DDEBUG common.c lexer.c parser.c compiler.c -Iinclude -o qui -g -Wall
 ```

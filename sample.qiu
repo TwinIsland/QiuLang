@@ -1,5 +1,14 @@
-if (true) {
+/*
+Welcome to QuiLang! 
+
+*/
+
+let a = 4.1;
+if (a / 2 = 3) {
     print("asdasdadss");
 } else if (true) {
+    // a = 2;
+    // asdad
+    /* this is a boring comment */
     print("wtf");
-}
+};

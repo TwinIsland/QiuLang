@@ -36,6 +36,9 @@ void print_token(Token *token)
     case TOK_INT:
         printf("INT(%s)", (char *)token->value);
         break;
+    case TOK_FLOAT:
+        printf("FLOAT(%s)", (char *)token->value);
+        break;
     case TOK_STRING:
         printf("STRING(\"%s\")", (char *)token->value);
         break;
@@ -144,7 +147,7 @@ expr *create_if(expr *cond, expr *then_branch, expr *else_branch)
 
 void free_expr(expr *e)
 {
-    if (&e == NULL)
+    if (e == NULL)
         return;
     switch (e->type)
     {

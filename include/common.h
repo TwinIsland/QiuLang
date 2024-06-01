@@ -22,6 +22,7 @@ typedef enum
     TOK_TRUE,     // true
     TOK_FALSE,    // false
     TOK_INT,      // [0 - 9]*
+    TOK_FLOAT,    // [0 - 9]+.[0 - 9]*
     TOK_STRING,   // "xxx"
     TOK_ADD,      // +
     TOK_MIN,      // -

@@ -1,9 +1,10 @@
 #include "lexer.h"
 #include <ctype.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 extern FILE *fstream;
-// static char (*buf_iter)();
-// void (*buf_uniter)(char);
 
 static inline char buf_iter()
 {
@@ -12,7 +13,7 @@ static inline char buf_iter()
 
 static inline void buf_uniter(char ch)
 {
-    if (ch != '\0')
+    if (ch != EOF)
         ungetc(ch, fstream);
 }
 
@@ -23,45 +24,80 @@ char buf_peek()
     return ret;
 }
 
-char *buf_str_peek(size_t str_size)
+void buf_str_peek(size_t str_size, char *dest)
 {
     // this function alloc buf on heap, remember to free
-    char *ret = malloc(str_size + 1);
     int i = 0;
     for (; i < str_size; ++i)
     {
-        ret[i] = buf_peek(buf_iter, buf_uniter);
-        if (ret[i] == EOF)
+        dest[i] = buf_iter();
+        if (dest[i] == EOF)
             break;
     }
-    ret[i + 1] = '\0';
-    return ret;
+    for (int j = i - 1; j >= 0; --j)
+    {
+        buf_uniter(dest[j]);
+    }
+    dest[i] = '\0';
 }
 
 void MATCH_wp()
 {
     char c;
-    while (c = buf_iter(), (c == ' ' || c == '\t' || c == '\n') && c != EOF)
+    while ((c = buf_iter()) != EOF && (c == ' ' || c == '\t' || c == '\n'))
         ;
     buf_uniter(c);
 }
 
-Token *MATCH_int()
+void MATCH_inline_comment()
+{
+    char c;
+    while ((c = buf_iter()) != EOF && c != '\n')
+        ;
+}
+
+void MATCH_multiline_comment()
+{
+    char *from = malloc(3);
+    if (!from)
+    {
+        SET_ERR("Memory allocation failed");
+        return;
+    }
+
+    while (buf_str_peek(2, from), strcmp(from, "*/"))
+    {
+        if (buf_iter() == EOF)
+            break;
+    }
+    buf_iter();  // To move past '*'
+    buf_iter();  // To move past '/'
+    free(from);
+}
+
+Token *MATCH_num()
 {
     char c;
     int buf_idx = 0;
     char *buf = malloc(64);
+    if (!buf)
+    {
+        SET_ERR("Memory allocation failed");
+        return NULL;
+    }
 
-    while (c = buf_iter(), (isdigit(c) && c != EOF))
+    int is_float = 0;
+
+    while ((c = buf_iter()) != EOF && (isdigit(c) || (c == '.' && (is_float = 1))))
     {
         buf[buf_idx++] = c;
         if (buf_idx == 64)
         {
-            SET_ERR("int cannot be larger than 2^64");
+            SET_ERR("Number cannot be larger than 2^64");
             free(buf);
             return NULL;
         }
-    };
+    }
 
     buf_uniter(c);
 
@@ -71,21 +107,27 @@ Token *MATCH_int()
         return NULL;
     }
 
-    return create_token(TOK_INT, buf);
+    buf[buf_idx] = '\0';
+    return create_token(is_float ? TOK_FLOAT : TOK_INT, buf);
 }
 
 Token *MATCH_ident()
 {
-    char c = 0;
+    char c;
     char *buf = malloc(128);
+    if (!buf)
+    {
+        SET_ERR("Memory allocation failed");
+        return NULL;
+    }
     int buf_idx = 0;
 
-    while (c = buf_iter(), (isalpha(c)) && c != EOF)
+    while ((c = buf_iter()) != EOF && isalpha(c))
     {
         buf[buf_idx++] = c;
         if (buf_idx == 128)
         {
-            SET_ERR("string cannot be longer than 127 character");
+            SET_ERR("String cannot be longer than 127 characters");
             free(buf);
             return NULL;
         }
@@ -99,6 +141,7 @@ Token *MATCH_ident()
         return NULL;
     }
 
+    buf[buf_idx] = '\0';
     return create_token(TOK_IDENT, buf);
 }
 
@@ -106,27 +149,33 @@ Token *MATCH_str()
 {
     char c;
     char *buf = malloc(256);
+    if (!buf)
+    {
+        SET_ERR("Memory allocation failed");
+        return NULL;
+    }
     int buf_idx = 0;
 
-    while ((c = buf_iter()) != '"')
+    while ((c = buf_iter()) != EOF && c != '"')
     {
-        if (c == EOF)
-        {
-            SET_ERR("string never ends till eof");
-            free(buf);
-            return NULL;
-        }
         buf[buf_idx++] = c;
 
         if (buf_idx == 256)
         {
-            SET_ERR("string cannot be longer than 255 character");
+            SET_ERR("String cannot be longer than 255 characters");
             free(buf);
             return NULL;
         }
     }
-    buf[buf_idx] = '\0';
 
+    if (c == EOF)
+    {
+        SET_ERR("String never ends till EOF");
+        free(buf);
+        return NULL;
+    }
+
+    buf[buf_idx] = '\0';
     return create_token(TOK_STRING, buf);
 }
 
@@ -155,11 +204,35 @@ Token *MATCH_many(const TokenType exp_token_type, const char *target)
 
 Token *token_next()
 {
+lexing_next_token:
     char c;
-    MATCH_wp(buf_iter, buf_uniter); // ignore all white space
+    Token *ret;
 
-    debug("peek1: '%c'", buf_peek(buf_iter, buf_uniter));
+    // ignore all white space & comments
+    MATCH_wp();
 
+    // ignore comments
+    char *from = malloc(3);
+    buf_str_peek(2, from);
+    if (!strcmp(from, "//")) {
+        free(from);
+        MATCH_inline_comment();
+        goto lexing_next_token;
+    } else if (!strcmp(from, "/*")) {
+        free(from);
+        MATCH_multiline_comment();
+        goto lexing_next_token;
+    }
+
+#ifdef DEBUG
+    char *peek_str = malloc(5);
+    buf_str_peek(4, peek_str);
+
+    debug("peek1: '%s'", peek_str);
+    free(peek_str);
+#endif
+
+    // pay attention to the priority
     switch (c = buf_iter())
     {
     case '+':
@@ -190,24 +263,21 @@ Token *token_next()
     default:
         buf_uniter(c);
 
-        debug("peek2: %c", buf_peek());
-
-        Token *ret;
-        if (ret = MATCH_many(TOK_LET, "let"))
+        if ((ret = MATCH_many(TOK_LET, "let")))
             return ret;
-        if (ret = MATCH_many(TOK_PRINT, "print"))
+        if ((ret = MATCH_many(TOK_PRINT, "print")))
             return ret;
-        if (ret = MATCH_many(TOK_IF, "if"))
+        if ((ret = MATCH_many(TOK_IF, "if")))
             return ret;
-        if (ret = MATCH_many(TOK_ELSE, "else"))
+        if ((ret = MATCH_many(TOK_ELSE, "else")))
             return ret;
-        if (ret = MATCH_many(TOK_TRUE, "true"))
+        if ((ret = MATCH_many(TOK_TRUE, "true")))
             return ret;
-        if (ret = MATCH_many(TOK_FALSE, "false"))
+        if ((ret = MATCH_many(TOK_FALSE, "false")))
             return ret;
-        if (ret = MATCH_ident())
+        if ((ret = MATCH_ident()))
             return ret;
-        if (ret = MATCH_int())
+        if ((ret = MATCH_num()))
             return ret;
 
         // fail to lexing

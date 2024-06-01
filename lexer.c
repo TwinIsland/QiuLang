@@ -1,9 +1,23 @@
 #include <common.h>
+#include <ctype.h>
 
-static char err_msg[128];
-static int is_err = 0;
+char err_msg[128];
+int is_err = 0;
 
 static FILE *fstream;
+// static char (*buf_iter)();
+// void (*buf_uniter)(char);
+
+static inline char buf_iter()
+{
+    return fgetc(fstream);
+}
+
+static inline void buf_uniter(char ch)
+{
+    if (ch != '\0')
+        ungetc(ch, fstream);
+}
 
 #define SET_ERR(msg, ...)                     \
     do                                        \
@@ -12,22 +26,43 @@ static FILE *fstream;
         is_err = 1;                           \
     } while (0);
 
-void MATCH_wp(char (*buf_iter)(), void (*buf_uniter)(char))
+char buf_peek()
 {
-    char c;
-    while (c = buf_iter(), (c == ' ' || c == '\t') && c != EOF)
-        ;
-    buf_uniter(c);
-    
+    char ret = buf_iter();
+    buf_uniter(ret);
+    return ret;
 }
 
-Token *MATCH_int(char (*buf_iter)(), void (*buf_uniter)(char))
+char *buf_str_peek(size_t str_size)
+{
+    // this function alloc buf on heap, remember to free
+    char *ret = malloc(str_size + 1);
+    int i = 0;
+    for (; i < str_size; ++i)
+    {
+        ret[i] = buf_peek(buf_iter, buf_uniter);
+        if (ret[i] == EOF)
+            break;
+    }
+    ret[i + 1] = '\0';
+    return ret;
+}
+
+void MATCH_wp()
+{
+    char c;
+    while (c = buf_iter(), (c == ' ' || c == '\t' || c == '\n') && c != EOF)
+        ;
+    buf_uniter(c);
+}
+
+Token *MATCH_int()
 {
     char c;
     int buf_idx = 0;
     char *buf = malloc(64);
 
-    while (c = buf_iter(), (c >= '0' || c <= '9') && c != EOF)
+    while (c = buf_iter(), (isdigit(c) && c != EOF))
     {
         buf[buf_idx++] = c;
         if (buf_idx == 64)
@@ -38,22 +73,24 @@ Token *MATCH_int(char (*buf_iter)(), void (*buf_uniter)(char))
         }
     };
 
+    buf_uniter(c);
+
     if (buf_idx == 0)
     {
-        buf_uniter(c);
+        free(buf);
         return NULL;
     }
 
     return create_token(TOK_INT, buf);
 }
 
-Token *MATCH_ident(char (*buf_iter)(), void (*buf_uniter)(char))
+Token *MATCH_ident()
 {
     char c = 0;
     char *buf = malloc(128);
     int buf_idx = 0;
 
-    while (c = buf_iter(), (c >= 'a' || c <= 'Z') && c != EOF)
+    while (c = buf_iter(), (isalpha(c)) && c != EOF)
     {
         buf[buf_idx++] = c;
         if (buf_idx == 128)
@@ -64,16 +101,18 @@ Token *MATCH_ident(char (*buf_iter)(), void (*buf_uniter)(char))
         }
     }
 
+    buf_uniter(c);
+
     if (buf_idx == 0)
     {
-        buf_uniter(c);
+        free(buf);
         return NULL;
     }
 
     return create_token(TOK_IDENT, buf);
 }
 
-Token *MATCH_str(char (*buf_iter)(), void (*buf_uniter)(char))
+Token *MATCH_str()
 {
     char c;
     char *buf = malloc(256);
@@ -84,9 +123,11 @@ Token *MATCH_str(char (*buf_iter)(), void (*buf_uniter)(char))
         if (c == EOF)
         {
             SET_ERR("string never ends till eof");
+            free(buf);
             return NULL;
         }
         buf[buf_idx++] = c;
+
         if (buf_idx == 256)
         {
             SET_ERR("string cannot be longer than 255 character");
@@ -99,7 +140,7 @@ Token *MATCH_str(char (*buf_iter)(), void (*buf_uniter)(char))
     return create_token(TOK_STRING, buf);
 }
 
-Token *MATCH_spec(char (*buf_iter)(), void (*buf_uniter)(char), TokenType exp_token_type, char *target)
+Token *MATCH_many(const TokenType exp_token_type, const char *target)
 {
     int len = strlen(target);
     char *buf = malloc(len + 1);
@@ -109,7 +150,6 @@ Token *MATCH_spec(char (*buf_iter)(), void (*buf_uniter)(char), TokenType exp_to
         buf[i] = buf_iter();
         if (buf[i] != target[i])
         {
-            // Undo the changes
             for (int j = i; j >= 0; --j)
             {
                 buf_uniter(buf[j]);
@@ -119,13 +159,17 @@ Token *MATCH_spec(char (*buf_iter)(), void (*buf_uniter)(char), TokenType exp_to
         }
     }
 
-    buf[len] = '\0'; // Null-terminate the buffer
+    buf[len] = '\0';
     return create_token(exp_token_type, buf);
 }
 
-Token *token_next(char (*buf_iter)(), void (*buf_uniter)(char))
+Token *token_next()
 {
     char c;
+    MATCH_wp(buf_iter, buf_uniter); // ignore all white space
+
+    debug("peek1: '%c'", buf_peek(buf_iter, buf_uniter));
+
     switch (c = buf_iter())
     {
     case '+':
@@ -147,35 +191,39 @@ Token *token_next(char (*buf_iter)(), void (*buf_uniter)(char))
         return create_token(TOK_LCBRANCE, NULL);
     case '}':
         return create_token(TOK_RCBRANCE, NULL);
+    case ';':
+        return create_token(TOK_SEMI, NULL);
     case '"':
-        return MATCH_str(buf_iter, buf_uniter);
+        return MATCH_str();
     case EOF:
         return NULL;
     default:
-        buf_uniter(c);  // restore the consumed character
-        MATCH_wp(buf_iter, buf_uniter); // ignore all white space
+        buf_uniter(c);
+
+        debug("peek2: %c", buf_peek());
 
         Token *ret;
-        if (ret = MATCH_ident(buf_iter, buf_uniter))
+        if (ret = MATCH_many(TOK_LET, "let"))
             return ret;
-        if (ret = MATCH_int(buf_iter, buf_uniter))
+        if (ret = MATCH_many(TOK_PRINT, "print"))
+            return ret;
+        if (ret = MATCH_many(TOK_IF, "if"))
+            return ret;
+        if (ret = MATCH_many(TOK_ELSE, "else"))
+            return ret;
+        if (ret = MATCH_many(TOK_TRUE, "true"))
+            return ret;
+        if (ret = MATCH_many(TOK_FALSE, "false"))
+            return ret;
+        if (ret = MATCH_ident())
+            return ret;
+        if (ret = MATCH_int())
             return ret;
 
         // fail to lexing
         SET_ERR("unsupported grammar.");
         return NULL;
     }
-}
-
-char buf_iter()
-{
-    return fgetc(fstream);
-}
-
-void buf_uniter(char ch)
-{
-    if (ch != '\0')
-        ungetc(ch, fstream);
 }
 
 int main(int argc, char *argv[])
@@ -203,8 +251,10 @@ int main(int argc, char *argv[])
     if (is_err)
     {
         fprintf(stderr, "Lexing failed: %s\n", err_msg);
+        fclose(fstream);
         return -1;
     }
-    printf("\ndone!\n");
+    fclose(fstream);
+    printf("done!\n");
     return 0;
 }

@@ -5,6 +5,17 @@
 #include <stdlib.h>
 #include <string.h>
 
+#ifdef DEBUG
+#define debug(msg, ...)                             \
+    do                                              \
+    {                                               \
+        printf("(DEBUG) " msg "\n", ##__VA_ARGS__); \
+    } while (0)
+#else
+#define debug(msg, ...)
+#endif
+
+// tokens
 typedef enum
 {
     TOK_IF,       // if
@@ -18,11 +29,14 @@ typedef enum
     TOK_MULT,     // *
     TOK_DIV,      // /
     TOK_IDENT,    // xxx
+    TOK_LET,      // let
+    TOK_PRINT,    // print
     TOK_ASSIGN,   // =
     TOK_LPAREN,   // (
     TOK_RPAREN,   // )
     TOK_LCBRANCE, // {
-    TOK_RCBRANCE  // }
+    TOK_RCBRANCE, // }
+    TOK_SEMI,     // ;
 } TokenType;
 
 typedef struct
@@ -42,9 +56,7 @@ Token *create_token(TokenType type, void *value)
 
 void print_token(Token *token)
 {
-    if (!token)
-        return;
-
+    if (!token) return;
     switch (token->type)
     {
     case TOK_IF:
@@ -55,6 +67,9 @@ void print_token(Token *token)
         break;
     case TOK_TRUE:
         printf("TRUE");
+        break;
+    case TOK_LET:
+        printf("LET");
         break;
     case TOK_FALSE:
         printf("FALSE");
@@ -71,6 +86,9 @@ void print_token(Token *token)
     case TOK_MIN:
         printf("MIN");
         break;
+    case TOK_PRINT:
+        printf("PRINT");
+        break;
     case TOK_MULT:
         printf("MULT");
         break;
@@ -82,6 +100,9 @@ void print_token(Token *token)
         break;
     case TOK_ASSIGN:
         printf("ASSIGN");
+        break;
+    case TOK_SEMI:
+        printf("SEMI");
         break;
     case TOK_LPAREN:
         printf("LPAREN");
@@ -99,6 +120,7 @@ void print_token(Token *token)
         printf("UNKNOWN");
         break;
     }
+    printf("\n");
 }
 
 void free_token(Token *token)

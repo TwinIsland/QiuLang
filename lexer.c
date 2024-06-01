@@ -1,10 +1,7 @@
-#include <common.h>
+#include "lexer.h"
 #include <ctype.h>
 
-char err_msg[128];
-int is_err = 0;
-
-static FILE *fstream;
+extern FILE *fstream;
 // static char (*buf_iter)();
 // void (*buf_uniter)(char);
 
@@ -18,13 +15,6 @@ static inline void buf_uniter(char ch)
     if (ch != '\0')
         ungetc(ch, fstream);
 }
-
-#define SET_ERR(msg, ...)                     \
-    do                                        \
-    {                                         \
-        sprintf(err_msg, msg, ##__VA_ARGS__); \
-        is_err = 1;                           \
-    } while (0);
 
 char buf_peek()
 {
@@ -226,6 +216,7 @@ Token *token_next()
     }
 }
 
+#ifdef LEXER
 int main(int argc, char *argv[])
 {
     if (argc != 2)
@@ -244,7 +235,7 @@ int main(int argc, char *argv[])
     Token *cur_token;
     do
     {
-        cur_token = token_next(buf_iter, buf_uniter);
+        cur_token = token_next();
         print_token(cur_token);
     } while (cur_token != NULL);
 
@@ -258,3 +249,4 @@ int main(int argc, char *argv[])
     printf("done!\n");
     return 0;
 }
+#endif

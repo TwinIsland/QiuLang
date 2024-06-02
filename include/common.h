@@ -46,9 +46,8 @@ typedef struct
 } Token;
 
 Token *create_token(TokenType type, void *value);
-
+char *token_to_str(Token *token);
 void print_token(Token *token);
-
 void free_token(Token *token);
 
 // expression

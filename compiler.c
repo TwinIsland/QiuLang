@@ -3,6 +3,7 @@
 #include "parser.h"
 
 FILE *fstream;
+FILE *asm_out_stream;
 
 int main(int argc, char *argv[])
 {
@@ -22,7 +23,7 @@ int main(int argc, char *argv[])
     Token *cur_token;
     do
     {
-        cur_token = parse();
+        cur_token = token_next();
         print_token(cur_token);
     } while (cur_token != NULL);
 

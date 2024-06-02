@@ -70,8 +70,8 @@ void MATCH_multiline_comment()
         if (buf_iter() == EOF)
             break;
     }
-    buf_iter();  // To move past '*'
-    buf_iter();  // To move past '/'
+    buf_iter(); // To move past '*'
+    buf_iter(); // To move past '/'
     free(from);
 }
 
@@ -214,11 +214,14 @@ lexing_next_token:
     // ignore comments
     char *from = malloc(3);
     buf_str_peek(2, from);
-    if (!strcmp(from, "//")) {
+    if (!strcmp(from, "//"))
+    {
         free(from);
         MATCH_inline_comment();
         goto lexing_next_token;
-    } else if (!strcmp(from, "/*")) {
+    }
+    else if (!strcmp(from, "/*"))
+    {
         free(from);
         MATCH_multiline_comment();
         goto lexing_next_token;
@@ -281,12 +284,16 @@ lexing_next_token:
             return ret;
 
         // fail to lexing
-        SET_ERR("unsupported grammar.");
+        char *fail_str_peek = malloc(10);
+        buf_str_peek(9, fail_str_peek);
+        SET_ERR("unsupported grammar '%s...'", fail_str_peek);
+        free(fail_str_peek);
+
         return NULL;
     }
 }
 
-#ifdef LEXER
+#ifdef LEXING
 int main(int argc, char *argv[])
 {
     if (argc != 2)

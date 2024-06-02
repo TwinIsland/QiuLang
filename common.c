@@ -12,77 +12,93 @@ Token *create_token(TokenType type, void *value)
     return token;
 }
 
+char *token_to_str(Token *token)
+{
+    if (!token)
+        return NULL;
+
+    char *str = NULL;
+    switch (token->type)
+    {
+    case TOK_IF:
+        str = strdup("IF");
+        break;
+    case TOK_ELSE:
+        str = strdup("ELSE");
+        break;
+    case TOK_TRUE:
+        str = strdup("TRUE");
+        break;
+    case TOK_FALSE:
+        str = strdup("FALSE");
+        break;
+    case TOK_LET:
+        str = strdup("LET");
+        break;
+    case TOK_INT:
+        str = (char *)malloc(5 + strlen((char *)token->value) + 1);
+        sprintf(str, "INT(%s)", (char *)token->value);
+        break;
+    case TOK_FLOAT:
+        str = (char *)malloc(7 + strlen((char *)token->value) + 1);
+        sprintf(str, "FLOAT(%s)", (char *)token->value);
+        break;
+    case TOK_STRING:
+        str = (char *)malloc(9 + strlen((char *)token->value) + 3);
+        sprintf(str, "STRING(\"%s\")", (char *)token->value);
+        break;
+    case TOK_ADD:
+        str = strdup("ADD");
+        break;
+    case TOK_MIN:
+        str = strdup("MIN");
+        break;
+    case TOK_PRINT:
+        str = strdup("PRINT");
+        break;
+    case TOK_MULT:
+        str = strdup("MULT");
+        break;
+    case TOK_DIV:
+        str = strdup("DIV");
+        break;
+    case TOK_IDENT:
+        str = (char *)malloc(8 + strlen((char *)token->value) + 1);
+        sprintf(str, "IDENT(%s)", (char *)token->value);
+        break;
+    case TOK_ASSIGN:
+        str = strdup("ASSIGN");
+        break;
+    case TOK_SEMI:
+        str = strdup("SEMI");
+        break;
+    case TOK_LPAREN:
+        str = strdup("LPAREN");
+        break;
+    case TOK_RPAREN:
+        str = strdup("RPAREN");
+        break;
+    case TOK_LCBRANCE:
+        str = strdup("LCBRANCE");
+        break;
+    case TOK_RCBRANCE:
+        str = strdup("RCBRANCE");
+        break;
+    default:
+        str = strdup("UNKNOWN");
+        break;
+    }
+
+    return str;
+}
+
 void print_token(Token *token)
 {
     if (!token)
         return;
-    switch (token->type)
-    {
-    case TOK_IF:
-        printf("IF");
-        break;
-    case TOK_ELSE:
-        printf("ELSE");
-        break;
-    case TOK_TRUE:
-        printf("TRUE");
-        break;
-    case TOK_LET:
-        printf("LET");
-        break;
-    case TOK_FALSE:
-        printf("FALSE");
-        break;
-    case TOK_INT:
-        printf("INT(%s)", (char *)token->value);
-        break;
-    case TOK_FLOAT:
-        printf("FLOAT(%s)", (char *)token->value);
-        break;
-    case TOK_STRING:
-        printf("STRING(\"%s\")", (char *)token->value);
-        break;
-    case TOK_ADD:
-        printf("ADD");
-        break;
-    case TOK_MIN:
-        printf("MIN");
-        break;
-    case TOK_PRINT:
-        printf("PRINT");
-        break;
-    case TOK_MULT:
-        printf("MULT");
-        break;
-    case TOK_DIV:
-        printf("DIV");
-        break;
-    case TOK_IDENT:
-        printf("IDENT(%s)", (char *)token->value);
-        break;
-    case TOK_ASSIGN:
-        printf("ASSIGN");
-        break;
-    case TOK_SEMI:
-        printf("SEMI");
-        break;
-    case TOK_LPAREN:
-        printf("LPAREN");
-        break;
-    case TOK_RPAREN:
-        printf("RPAREN");
-        break;
-    case TOK_LCBRANCE:
-        printf("LCBRANCE");
-        break;
-    case TOK_RCBRANCE:
-        printf("RCBRANCE");
-        break;
-    default:
-        printf("UNKNOWN");
-        break;
-    }
-    printf("\n");
+    char *tstr = token_to_str(token);
+    puts(tstr);
+    free(tstr);
 }
 
 void free_token(Token *token)
@@ -173,4 +189,3 @@ void free_expr(expr *e)
     }
     free(e);
 }
-

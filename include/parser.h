@@ -2,4 +2,5 @@
 
 #include "common.h"
 
-Token *parse();
+#define RULE(name) static void name() // make the parser prettier lol
+

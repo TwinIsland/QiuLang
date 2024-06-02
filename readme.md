@@ -1,7 +1,7 @@
 # QiuLang
 A Turing-complete language implemented entirely in pure C, with no external libraries, built from scratch.
 
-![compiling pipline](docs/pipline.png)
+![compiling pipline](docs/pipline.svg)
 
 ## Run
 **Compile lexer:**

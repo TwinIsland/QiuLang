@@ -58,18 +58,23 @@ void MATCH_inline_comment()
 
 void MATCH_multiline_comment()
 {
+    int level = 1;
     char *from = malloc(3);
-    if (!from)
-    {
-        SET_ERR("Memory allocation failed");
-        return;
-    }
 
-    while (buf_str_peek(2, from), strcmp(from, "*/"))
+    while (level > 0)
     {
+
         if (buf_iter() == EOF)
             break;
+
+        buf_str_peek(2, from);
+
+        if (!strcmp(from, "/*"))
+            level++;
+        else if (!strcmp(from, "*/"))
+            level--;
     }
+
     buf_iter(); // To move past '*'
     buf_iter(); // To move past '/'
     free(from);
